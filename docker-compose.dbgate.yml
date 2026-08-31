@@ -5,7 +5,7 @@
 services:
   expenses_dbgate:
     container_name: expenses_dbgate
-    image: dbgate/dbgate:5.5.6-alpine
+    image: dbgate/dbgate:5.5.6
     restart: unless-stopped
 
     ports:
@@ -16,10 +16,6 @@ services:
     # требует права записи на -shm-файл даже для чтения данных.
     volumes:
       - ./data:/data
-
-    # Тот же UID, что и у сервиса, иначе dbgate наделает файлов от root
-    # и база станет недоступна с хоста.
-    user: "${APP_UID:-1000}:${APP_GID:-1000}"
 
     environment:
       CONNECTIONS: con1

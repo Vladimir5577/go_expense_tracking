@@ -22,10 +22,6 @@ import (
 	"go_expense_service/internal/helper"
 )
 
-// minJWTSecretLen — минимальная длина секрета подписи. Короткий секрет
-// подбирается перебором, а вся авторизация держится только на нём.
-const minJWTSecretLen = 32
-
 type Config struct {
 	Env string
 
@@ -94,8 +90,8 @@ func Load() (*Config, error) {
 // Консольной утилите useradm секрет подписи не нужен, поэтому проверка вынесена
 // из Load — иначе useradm нельзя было бы запустить без JWT_SECRET.
 func (c *Config) ValidateForServer() error {
-	if len(c.JWTSecret) < minJWTSecretLen {
-		return fmt.Errorf("JWT_SECRET обязателен и должен быть не короче %d символов", minJWTSecretLen)
+	if c.JWTSecret == "" {
+		return fmt.Errorf("JWT_SECRET обязателен")
 	}
 	return nil
 }

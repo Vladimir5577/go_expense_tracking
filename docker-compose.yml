@@ -1,29 +1,27 @@
 services:
   expenses_service:
-    # Своего образа нет: бинарник собирается на хосте, а внутри только
-    # запускается. Alpine взят ради шелла — сам бинарник статический
-    # и работает даже в scratch.
-    image: alpine:3.20
+    build:
+      context: .
+      dockerfile: ./docker_env/go/Dockerfile
     container_name: expenses_service
     restart: unless-stopped
-
-    # Каталог проекта целиком: контейнер видит бинарник, статику и .env,
-    # а база остаётся обычным файлом на хосте.
+    env_file:
+      - .env
     volumes:
+      # Прокидываем текущую папку с бинарником main, статикой и SQLite-базой.
       - ./:/app
-    working_dir: /app
-    command: ./main
-
-    # Должно совпадать с владельцем каталога на хосте, иначе сервис
-    # не сможет писать в базу. Свои значения: id -u и id -g
-    user: "${APP_UID:-1000}:${APP_GID:-1000}"
-
     environment:
       # Перекрывает .env: петля у контейнера своя, и с 127.0.0.1 внутри
       # сервис был бы недоступен даже для nginx.
       - SERVER_HOST=0.0.0.0
-
     ports:
       # Префикс 127.0.0.1 обязателен: без него Docker пробивает порт
       # наружу в обход ufw.
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${SERVER_PORT:-8080}:${SERVER_PORT:-8080}"
+    networks:
+      - expenses-net
+
+networks:
+  expenses-net:
+    name: expenses-net
+    driver: bridge
