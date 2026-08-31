@@ -12,6 +12,11 @@ cp .env.example .env
 go build cmd/main.go
 ```
 3. Migrations
+create data folder
+```bash
+mkdir data
+```
+
 ```bash
 ~/go/bin/goose -dir migrations sqlite3 ./data/expenses.db up
 ```

@@ -7,21 +7,10 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    volumes:
-      # Прокидываем текущую папку с бинарником main, статикой и SQLite-базой.
-      - ./:/app
     environment:
-      # Перекрывает .env: петля у контейнера своя, и с 127.0.0.1 внутри
-      # сервис был бы недоступен даже для nginx.
+      # .env задаёт 127.0.0.1 — внутри контейнера это только его loopback.
       - SERVER_HOST=0.0.0.0
+    volumes:
+      - ./:/app
     ports:
-      # Префикс 127.0.0.1 обязателен: без него Docker пробивает порт
-      # наружу в обход ufw.
-      - "127.0.0.1:${SERVER_PORT:-8080}:${SERVER_PORT:-8080}"
-    networks:
-      - expenses-net
-
-networks:
-  expenses-net:
-    name: expenses-net
-    driver: bridge
+      - "${SERVER_PORT:-8080}:${SERVER_PORT:-8080}"
