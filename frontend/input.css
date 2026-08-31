@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+/* Явно указываем, что сканировать: разметка и модули фронтенда.
+   Tailwind собирает только те классы, которые встретились в исходниках как
+   literal-строки — динамические имена вида `bg-${color}` он не увидит.
+   Поэтому палитра категорий перечислена целиком в js/colors.js. */
+@source "../web/index.html";
+@source "../web/js/**/*.js";
+
+@theme {
+    /* Палитра категорий. Цвета подобраны так, чтобы читаться и на светлом,
+       и на тёмном фоне без отдельных вариантов. */
+    --color-cat-red: #ef4444;
+    --color-cat-orange: #f97316;
+    --color-cat-amber: #f59e0b;
+    --color-cat-green: #22c55e;
+    --color-cat-teal: #14b8a6;
+    --color-cat-blue: #3b82f6;
+    --color-cat-indigo: #6366f1;
+    --color-cat-violet: #a855f7;
+    --color-cat-pink: #ec4899;
+    --color-cat-gray: #6b7280;
+}
+
+@layer base {
+    html {
+        /* Safari на iOS иначе увеличивает шрифт при повороте экрана. */
+        -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+        @apply bg-neutral-100 text-neutral-900 antialiased;
+        @apply dark:bg-neutral-950 dark:text-neutral-100;
+    }
+
+    /* Инпуты меньше 16px заставляют Safari на iOS зумить страницу при фокусе,
+       ломая вёрстку. Задаём базовый размер один раз здесь, чтобы не помнить
+       про text-base у каждого поля. */
+    input,
+    select,
+    textarea,
+    button {
+        font-size: 1rem;
+    }
+}
+
+@layer components {
+    /* Поля ввода и кнопки повторяются в каждой форме — держим их одним
+       определением, иначе набор утилит расползётся по разметке с расхождениями. */
+    .field {
+        @apply w-full min-h-11 rounded-lg border px-3 py-2;
+        @apply border-neutral-300 bg-white text-neutral-900 placeholder-neutral-400;
+        @apply focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 focus:outline-none;
+        @apply dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:placeholder-neutral-500;
+    }
+
+    /* Базу перечисляем через список селекторов, а не через @apply .btn:
+       в Tailwind v4 @apply работает только с утилитами самого фреймворка,
+       собственные классы через него не подставляются. */
+    .btn,
+    .btn-primary,
+    .btn-secondary,
+    .btn-danger {
+        @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2;
+        @apply font-medium transition-colors select-none;
+        @apply disabled:cursor-not-allowed disabled:opacity-50;
+    }
+
+    .btn-primary {
+        @apply bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800;
+    }
+
+    .btn-secondary {
+        @apply border border-neutral-300 bg-white text-neutral-700;
+        @apply hover:bg-neutral-50 active:bg-neutral-100;
+        @apply dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800;
+    }
+
+    .btn-danger {
+        @apply bg-red-600 text-white hover:bg-red-700 active:bg-red-800;
+    }
+
+    .card {
+        @apply rounded-xl bg-white shadow-sm dark:bg-neutral-900;
+    }
+
+    /* Суммы: моноширинные цифры, иначе колонка сумм «пляшет» по ширине. */
+    .amount {
+        @apply tabular-nums;
+    }
+
+    .label {
+        @apply mb-1 block text-sm font-medium text-neutral-600 dark:text-neutral-400;
+    }
+}

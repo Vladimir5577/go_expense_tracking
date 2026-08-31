@@ -1,0 +1,29 @@
+# Просмотр базы через веб-интерфейс. Поднимается отдельно и только когда нужен:
+#   docker compose -f docker-compose.dbgate.yml up -d
+#   docker compose -f docker-compose.dbgate.yml down
+
+services:
+  expenses_dbgate:
+    container_name: expenses_dbgate
+    image: dbgate/dbgate:5.5.6-alpine
+    restart: unless-stopped
+
+    ports:
+      # 8089, чтобы не столкнуться с dbgate канбана на 8088
+      - "127.0.0.1:8089:3000"
+
+    # Каталог с базой. Монтировать только на чтение нельзя: SQLite в режиме WAL
+    # требует права записи на -shm-файл даже для чтения данных.
+    volumes:
+      - ./data:/data
+
+    # Тот же UID, что и у сервиса, иначе dbgate наделает файлов от root
+    # и база станет недоступна с хоста.
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
+
+    environment:
+      CONNECTIONS: con1
+
+      LABEL_con1: Расходы
+      FILE_con1: /data/expenses.db
+      ENGINE_con1: sqlite@dbgate-plugin-sqlite

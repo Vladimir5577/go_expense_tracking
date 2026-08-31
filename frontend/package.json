@@ -1,0 +1,14 @@
+{
+  "name": "go-expenses-frontend",
+  "private": true,
+  "description": "Инструментарий фронтенда: сборка стилей Tailwind",
+  "scripts": {
+    "css": "tailwindcss -i input.css -o ../web/app.css --watch",
+    "css:build": "tailwindcss -i input.css -o ../web/app.css --minify"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "tailwindcss": "^4.3.3"
+  },
+  "type": "module"
+}
