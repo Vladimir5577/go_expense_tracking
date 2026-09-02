@@ -1,7 +1,11 @@
 // Форматирование денег, дат и процентов. Чистые функции без DOM —
 // при переезде на React файл переносится как есть.
 
+// Валюта задана здесь одним местом: символ ₽ больше нигде в коде не пишется
+// руками, иначе он рано или поздно разойдётся между списком и сводкой.
 const moneyFormat = new Intl.NumberFormat('ru-RU', {
+    style: 'currency',
+    currency: 'RUB',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
 });
@@ -10,7 +14,9 @@ const monthDayFormat = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month:
 const monthDayShortFormat = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' });
 const weekdayFormat = new Intl.DateTimeFormat('ru-RU', { weekday: 'short' });
 
-// 1543.2 → "1 543,20"
+const MS_IN_DAY = 24 * 60 * 60 * 1000;
+
+// 1543.2 → "1 543,20 ₽"
 export function formatMoney(value) {
     return moneyFormat.format(value ?? 0);
 }
@@ -61,12 +67,32 @@ export function formatDateRange(fromIso, toIso) {
     return `${formatDate(fromIso)} – ${formatDate(toIso)}`;
 }
 
+function toIso(date) {
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${date.getFullYear()}-${month}-${day}`;
+}
+
 // Сегодняшняя дата в формате, который принимает API.
 export function todayIso() {
-    const now = new Date();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${now.getFullYear()}-${month}-${day}`;
+    return toIso(new Date());
+}
+
+// Сдвиг даты на несколько дней. Единственная календарная арифметика на клиенте:
+// длины месяцев и начало недели по-прежнему считает сервер, а листание периодов
+// отталкивается от уже посчитанных им границ — «день до from», «день после to».
+export function addDays(iso, days) {
+    const date = parseDate(iso);
+    date.setDate(date.getDate() + days);
+    return toIso(date);
+}
+
+// Количество дней в диапазоне, включая обе границы.
+export function daysInRange(fromIso, toIso) {
+    if (!fromIso || !toIso) return 0;
+    // Округление нужно из-за перехода на летнее время: между двумя полуночами
+    // может оказаться 23 или 25 часов.
+    return Math.round((parseDate(toIso) - parseDate(fromIso)) / MS_IN_DAY) + 1;
 }
 
 // Разбирает введённую пользователем сумму: принимает и запятую, и точку.

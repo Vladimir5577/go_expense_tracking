@@ -1,130 +1,125 @@
+// Управление категориями: список и форма создания/редактирования.
+
 import { api } from '../api.js';
 import { CATEGORY_COLORS, colorForCategory } from '../colors.js';
 import { errorMessage } from '../messages.js';
 import { getState, setState } from '../store.js';
-import { appHeader, emptyState, escapeHtml, skeleton, toast } from './layout.js';
+import { actionSheet, emptyState, listRow, onRowMenu, renderShell, setBusy, skeleton, toast } from './layout.js';
+import { formPanel } from './panel.js';
 
-let root = null;
-// id редактируемой категории; null — форма работает в режиме создания.
-let editingId = null;
-let selectedColor = CATEGORY_COLORS[0].key;
+const DEFAULT_COLOR = CATEGORY_COLORS[0].key;
 
-export function renderCategories(container) {
-    root = container;
-    editingId = null;
+let sections = null;
+let panel = null;
 
-    root.innerHTML = `
-        ${appHeader('categories')}
-        <main class="mx-auto max-w-screen-sm px-3 pb-8" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom))">
-            <div id="form" class="pt-3"></div>
-            <div id="list" class="pt-4">${skeleton(4)}</div>
-        </main>
-    `;
+export function renderCategories(root) {
+    const main = renderShell(
+        root,
+        'categories',
+        `
+        <div id="form" class="pt-3"></div>
+        <div id="list" class="pt-4">${skeleton(4)}</div>
+    `,
+    );
 
-    root.querySelector('#logout').addEventListener('click', async () => {
-        const { logout } = await import('../main.js');
-        logout();
-    });
+    sections = {
+        form: main.querySelector('#form'),
+        list: main.querySelector('#list'),
+    };
 
-    renderForm();
+    panel = createCategoryForm(sections.form);
+    onRowMenu(sections.list, openMenu);
+
     void load();
 }
 
 async function load() {
+    setBusy(sections.list, true);
+
     try {
-        const categories = await api.listCategories();
-        setState({ categories });
+        setState({ categories: await api.listCategories() });
         renderList();
     } catch (error) {
         toast(errorMessage(error));
+    } finally {
+        setBusy(sections.list, false);
     }
 }
 
 // --- форма ---
 
-function renderForm() {
-    root.querySelector('#form').innerHTML = `
-        <details id="form-details" class="card overflow-hidden">
-            <summary class="flex min-h-11 cursor-pointer list-none items-center px-4 font-medium select-none">
-                <span id="form-title">+ Новая категория</span>
-            </summary>
-
-            <form id="category-form" class="space-y-3 border-t border-neutral-200 p-4 dark:border-neutral-800" novalidate>
-                <div>
-                    <label class="label" for="name">Название</label>
-                    <input class="field" id="name" name="name" required maxlength="100"
-                           autocomplete="off" placeholder="Продукты">
-                </div>
-
-                <div>
-                    <label class="label" for="description">Описание</label>
-                    <input class="field" id="description" name="description" maxlength="500"
-                           autocomplete="off" placeholder="Необязательно">
-                </div>
-
-                <div>
-                    <span class="label">Цвет</span>
-                    <div id="colors" class="flex flex-wrap gap-2"></div>
-                </div>
-
-                <div class="flex gap-2">
-                    <button class="btn-primary flex-1" type="submit" id="category-submit">Создать</button>
-                    <button class="btn-secondary hidden" type="button" id="category-cancel">Отмена</button>
-                </div>
-            </form>
-        </details>
-    `;
-
-    renderColorPicker();
-    root.querySelector('#category-form').addEventListener('submit', onSubmit);
-    root.querySelector('#category-cancel').addEventListener('click', resetForm);
-}
-
 // Цвет выбирается из фиксированной палитры, а не свободным вводом: так набор
-// цветов остаётся согласованным и заведомо читается в обеих темах.
-function renderColorPicker() {
-    const box = root.querySelector('#colors');
-
-    box.innerHTML = CATEGORY_COLORS.map(
-        (color) => `
-        <button type="button" data-color="${color.key}" title="${color.title}" aria-label="${color.title}"
-                class="size-11 rounded-full ${color.dot} ${
-                    color.key === selectedColor
-                        ? 'ring-2 ring-neutral-900 ring-offset-2 dark:ring-neutral-100 dark:ring-offset-neutral-900'
-                        : ''
-                }"></button>
-    `,
-    ).join('');
-
-    for (const button of box.querySelectorAll('[data-color]')) {
-        button.addEventListener('click', () => {
-            selectedColor = button.dataset.color;
-            renderColorPicker();
-        });
-    }
+// цветов остаётся согласованным и заведомо читается в обеих темах. Под кружками
+// лежат обычные радиокнопки — выбор тогда не только виден, но и объявляется
+// скринридером, а стрелки на клавиатуре работают сами собой.
+function colorPicker() {
+    return `
+        <fieldset>
+            <legend class="label">Цвет</legend>
+            <div class="flex flex-wrap gap-2">
+                ${CATEGORY_COLORS.map(
+                    (color) => `
+                    <label class="cursor-pointer">
+                        <input type="radio" name="color" value="${color.key}" class="peer sr-only"
+                               ${color.key === DEFAULT_COLOR ? 'checked' : ''}>
+                        <span class="sr-only">${color.title}</span>
+                        <span aria-hidden="true"
+                              class="block size-11 rounded-full ${color.dot}
+                                     peer-checked:ring-2 peer-checked:ring-neutral-900 peer-checked:ring-offset-2
+                                     peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2
+                                     peer-focus-visible:outline-blue-500
+                                     dark:peer-checked:ring-neutral-100 dark:peer-checked:ring-offset-neutral-900"></span>
+                    </label>
+                `,
+                ).join('')}
+            </div>
+        </fieldset>
+    `;
 }
 
-async function onSubmit(event) {
-    event.preventDefault();
+function createCategoryForm(box) {
+    return formPanel(box, {
+        createTitle: '+ Новая категория',
+        editTitle: 'Изменить категорию',
+        createSubmit: 'Создать',
+        editSubmit: 'Сохранить',
+        focusField: 'name',
+        clearOnReset: ['name', 'description'],
+        onReset: (form) => {
+            form.color.value = DEFAULT_COLOR;
+        },
+        onSubmit: submitCategory,
+        fields: `
+            <div>
+                <label class="label" for="name">Название</label>
+                <input class="field" id="name" name="name" required maxlength="100"
+                       autocomplete="off" placeholder="Продукты">
+            </div>
 
-    const form = event.currentTarget;
-    const submit = form.querySelector('#category-submit');
+            <div>
+                <label class="label" for="description">Описание</label>
+                <input class="field" id="description" name="description" maxlength="500"
+                       autocomplete="off" placeholder="Необязательно">
+            </div>
 
+            ${colorPicker()}
+        `,
+    });
+}
+
+async function submitCategory(form, editingId) {
     const name = form.name.value.trim();
     if (!name) {
         toast('Введите название категории.');
         form.name.focus();
-        return;
+        return false;
     }
 
     const body = {
         name,
         description: form.description.value.trim(),
-        color: selectedColor,
+        color: form.color.value,
     };
-
-    submit.disabled = true;
-    submit.textContent = 'Сохраняем…';
 
     try {
         if (editingId === null) {
@@ -132,114 +127,106 @@ async function onSubmit(event) {
         } else {
             await api.updateCategory(editingId, body);
         }
-        resetForm();
-        await load();
     } catch (error) {
         toast(errorMessage(error));
-    } finally {
-        submit.disabled = false;
-        submit.textContent = editingId === null ? 'Создать' : 'Сохранить';
+        return false;
     }
-}
 
-function startEditing(category) {
-    editingId = category.id;
-    selectedColor = colorForCategory(category).key;
-
-    const details = root.querySelector('#form-details');
-    const form = root.querySelector('#category-form');
-
-    details.open = true;
-    root.querySelector('#form-title').textContent = 'Изменить категорию';
-    form.name.value = category.name;
-    form.description.value = category.description;
-    renderColorPicker();
-
-    root.querySelector('#category-submit').textContent = 'Сохранить';
-    root.querySelector('#category-cancel').classList.remove('hidden');
-
-    details.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    form.name.focus();
-}
-
-function resetForm() {
-    editingId = null;
-    selectedColor = CATEGORY_COLORS[0].key;
-
-    const form = root.querySelector('#category-form');
-    if (!form) return;
-
-    root.querySelector('#form-title').textContent = '+ Новая категория';
-    root.querySelector('#category-submit').textContent = 'Создать';
-    root.querySelector('#category-cancel').classList.add('hidden');
-    form.name.value = '';
-    form.description.value = '';
-    renderColorPicker();
+    await load();
+    return true;
 }
 
 // --- список ---
 
 function renderList() {
     const { categories } = getState();
-    const box = root.querySelector('#list');
 
     if (categories.length === 0) {
-        box.innerHTML = emptyState('Категорий пока нет. Заведите первую — например, «Продукты».');
+        sections.list.innerHTML = emptyState('Категорий пока нет. Заведите первую — например, «Продукты».');
         return;
     }
 
-    box.innerHTML = `
+    sections.list.innerHTML = `
         <ul class="card divide-y divide-neutral-200 overflow-hidden dark:divide-neutral-800">
-            ${categories.map(categoryRow).join('')}
+            ${categories
+                .map((category) =>
+                    listRow({
+                        id: category.id,
+                        accent: colorForCategory(category).bar,
+                        title: category.name,
+                        subtitle: category.description,
+                    }),
+                )
+                .join('')}
         </ul>
     `;
+}
 
-    for (const row of box.querySelectorAll('[data-category]')) {
-        const category = categories.find((item) => item.id === Number(row.dataset.category));
+function openMenu(id) {
+    const category = findCategory(id);
+    if (!category) return;
 
-        row.querySelector('[data-edit]').addEventListener('click', () => startEditing(category));
-        row.querySelector('[data-delete]').addEventListener('click', async () => {
-            if (!confirm(`Удалить категорию «${category.name}»?`)) return;
+    actionSheet({
+        title: category.name,
+        subtitle: category.description,
+        actions: [
+            { title: 'Изменить', onClick: () => startEditing(id) },
+            { title: 'Удалить', danger: true, onClick: () => void removeCategory(id) },
+        ],
+    });
+}
 
-            try {
-                await api.deleteCategory(category.id);
-                await load();
-            } catch (error) {
-                // Отдельная подсказка для 409: сервис запрещает удалять
-                // категорию, на которой висят траты.
-                toast(errorMessage(error));
-            }
+function startEditing(id) {
+    const category = findCategory(id);
+    if (!category) return;
+
+    panel.edit(category.id, {
+        name: category.name,
+        description: category.description,
+        color: colorForCategory(category).key,
+    });
+}
+
+async function removeCategory(id) {
+    const category = findCategory(id);
+    if (!category) return;
+
+    if (panel.editingId === id) {
+        panel.reset();
+    }
+
+    try {
+        await api.deleteCategory(id);
+        await load();
+    } catch (error) {
+        // Сервис запрещает удалять категорию, на которой висят траты, —
+        // об этом расскажет текст из messages.js.
+        toast(errorMessage(error));
+        return;
+    }
+
+    toast(`Категория «${category.name}» удалена`, {
+        variant: 'neutral',
+        action: 'Отменить',
+        onAction: () => void restoreCategory(category),
+    });
+}
+
+// Как и у трат, отмена — это создание заново с новым id. Удалить категорию
+// можно только пустой, так что терять нечему.
+async function restoreCategory(category) {
+    try {
+        await api.createCategory({
+            name: category.name,
+            description: category.description,
+            color: category.color,
         });
+        await load();
+    } catch (error) {
+        toast(errorMessage(error));
     }
 }
 
-function categoryRow(category) {
-    const color = colorForCategory(category);
-
-    return `
-        <li data-category="${category.id}" class="flex items-stretch">
-            <button type="button" data-edit
-                    class="flex min-h-14 flex-1 items-center gap-3 px-3 py-2 text-left">
-                <span class="size-3 shrink-0 rounded-full ${color.dot}"></span>
-                <span class="min-w-0 flex-1">
-                    <span class="block truncate">${escapeHtml(category.name)}</span>
-                    ${
-                        category.description
-                            ? `<span class="block truncate text-xs text-neutral-500 dark:text-neutral-400">
-                                   ${escapeHtml(category.description)}
-                               </span>`
-                            : ''
-                    }
-                </span>
-            </button>
-
-            <button type="button" data-delete aria-label="Удалить"
-                    class="flex min-h-14 w-11 shrink-0 items-center justify-center text-neutral-400
-                           hover:text-red-600 dark:hover:text-red-400">
-                <svg viewBox="0 0 20 20" fill="currentColor" class="size-5">
-                    <path d="M8.75 3h2.5a.75.75 0 0 1 .75.75V4.5h3.25a.75.75 0 0 1 0 1.5h-.6l-.7 9.1A2.25 2.25 0 0 1 11.7 17H8.3a2.25 2.25 0 0 1-2.25-1.9L5.35 6h-.6a.75.75 0 0 1 0-1.5H8v-.75A.75.75 0 0 1 8.75 3Z"/>
-                </svg>
-            </button>
-        </li>
-    `;
+function findCategory(id) {
+    return getState().categories.find((category) => category.id === id);
 }

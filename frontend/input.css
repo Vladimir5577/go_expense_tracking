@@ -42,6 +42,16 @@
     button {
         font-size: 1rem;
     }
+
+    /* Половина элементов управления — обычные button без рамки: чипы фильтра,
+       переключатель периода, строки списков. Без этого правила фокус на них
+       не видно вообще, и клавиатурой пользоваться нельзя.
+       :where() держит специфичность нулевой, чтобы утилиты в разметке
+       по-прежнему побеждали — в том числе focus:outline-none у .field,
+       у которого своё кольцо. */
+    :where(a, button, summary, input, select, textarea, [tabindex]):focus-visible {
+        @apply outline-2 outline-offset-2 outline-blue-500;
+    }
 }
 
 @layer components {
@@ -60,7 +70,8 @@
     .btn,
     .btn-primary,
     .btn-secondary,
-    .btn-danger {
+    .btn-danger,
+    .btn-add {
         @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2;
         @apply font-medium transition-colors select-none;
         @apply disabled:cursor-not-allowed disabled:opacity-50;
@@ -77,6 +88,15 @@
     }
 
     .btn-danger {
+        @apply bg-red-600 text-white hover:bg-red-700 active:bg-red-800;
+    }
+
+    /* Кнопка «Добавить трату» в шапке. Красная, а не синяя, намеренно: это то,
+       ради чего приложение открывают чаще всего, и её должно быть видно раньше
+       вкладок. Высота остаётся 44px, как у всех тапов, — сужены только поля,
+       иначе на 360px шапка не помещается. */
+    .btn-add {
+        @apply px-3 text-sm;
         @apply bg-red-600 text-white hover:bg-red-700 active:bg-red-800;
     }
 

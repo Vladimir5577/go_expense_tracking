@@ -94,6 +94,7 @@ export const api = {
     deleteCategory: (id) => request('DELETE', `/api/categories/${id}`),
 
     listExpenses: (params) => request('GET', '/api/expenses', { params }),
+    getExpense: (id) => request('GET', `/api/expenses/${id}`),
     createExpense: (body) => request('POST', '/api/expenses', { body }),
     updateExpense: (id, body) => request('PATCH', `/api/expenses/${id}`, { body }),
     deleteExpense: (id) => request('DELETE', `/api/expenses/${id}`),

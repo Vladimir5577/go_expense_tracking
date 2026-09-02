@@ -1,50 +1,37 @@
-// Состояние приложения: один объект и подписки на его изменение.
+// Состояние приложения: один объект и единственная точка его изменения.
 //
-// Здесь нет реактивности и диффинга DOM — вьюхи перерисовывают свою секцию
-// целиком. На объёмах этого приложения это быстро, а главное — не превращается
-// в самописный мини-React, который потом пришлось бы выпиливать.
+// Подписок и диффинга DOM здесь нет — вьюхи перерисовывают свою секцию целиком
+// после того, как контейнер экрана обновил состояние. На объёмах этого
+// приложения это быстро, а главное — не превращается в самописный мини-React,
+// который потом пришлось бы выпиливать.
 
-const state = {
+const initialState = {
     user: null,
     categories: [],
     expenses: [],
     summary: null,
 
-    // Параметры выборки. Границы периода считает сервер — клиент шлёт period.
-    period: 'week',
-    categoryFilter: [],
+    // Сколько записей всего подходит под фильтр. Список ограничен limit,
+    // и это единственный способ узнать, что показана не вся выборка.
+    totalItems: 0,
 
-    loading: false,
-    error: null,
+    // Параметры выборки. Границы периода считает сервер — клиент шлёт period
+    // и опорную дату anchor (null — «сегодня»).
+    period: 'week',
+    anchor: null,
+    categoryFilter: [],
 };
 
-const listeners = new Set();
+const state = { ...initialState };
 
 export function getState() {
     return state;
 }
 
-export function subscribe(listener) {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
-}
-
 export function setState(patch) {
     Object.assign(state, patch);
-    for (const listener of listeners) {
-        listener(state);
-    }
 }
 
 export function resetState() {
-    setState({
-        user: null,
-        categories: [],
-        expenses: [],
-        summary: null,
-        period: 'week',
-        categoryFilter: [],
-        loading: false,
-        error: null,
-    });
+    setState({ ...initialState, categoryFilter: [] });
 }

@@ -1,6 +1,7 @@
-import { api, clearToken, getToken, onUnauthorized } from './api.js';
+import { getToken, onUnauthorized } from './api.js';
 import { navigate, route, setNotFound, startRouter } from './router.js';
-import { resetState, setState } from './store.js';
+import { requireAuth } from './session.js';
+import { resetState } from './store.js';
 import { renderLogin } from './views/login.js';
 
 const root = document.querySelector('#app');
@@ -16,8 +17,30 @@ route('/login', () => renderLogin(root));
 
 route('/expenses', async () => {
     if (!(await requireAuth())) return;
-    const { renderExpenses } = await import('./views/expenses.js');
+    const { renderExpenses } = await import('./views/expenses/index.js');
     renderExpenses(root);
+});
+
+// Добавление и изменение траты — отдельный экран, а не форма внутри списка.
+// '/expense/new' объявлен раньше '/expense/:id': роутер берёт первый
+// подошедший шаблон.
+route('/expense/new', async () => {
+    if (!(await requireAuth())) return;
+    const { renderExpenseForm } = await import('./views/expenses/form.js');
+    renderExpenseForm(root, null);
+});
+
+route('/expense/:id', async ({ id }) => {
+    if (!(await requireAuth())) return;
+
+    const expenseId = Number(id);
+    if (!Number.isInteger(expenseId) || expenseId <= 0) {
+        navigate('/expenses');
+        return;
+    }
+
+    const { renderExpenseForm } = await import('./views/expenses/form.js');
+    renderExpenseForm(root, expenseId);
 });
 
 route('/categories', async () => {
@@ -28,32 +51,5 @@ route('/categories', async () => {
 
 route('/', () => navigate(getToken() ? '/expenses' : '/login'));
 setNotFound(() => navigate('/'));
-
-// requireAuth проверяет не только наличие токена, но и его пригодность:
-// токен живёт 7 дней и может протухнуть, пока вкладка была открыта.
-async function requireAuth() {
-    if (!getToken()) {
-        navigate('/login');
-        return false;
-    }
-
-    try {
-        const user = await api.me();
-        setState({ user });
-        return true;
-    } catch {
-        // 401 уже обработан в onUnauthorized; остальные ошибки тоже уводят
-        // на логин — без пользователя показывать нечего.
-        clearToken();
-        navigate('/login');
-        return false;
-    }
-}
-
-export function logout() {
-    clearToken();
-    resetState();
-    navigate('/login');
-}
 
 startRouter();

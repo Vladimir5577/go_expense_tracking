@@ -6,9 +6,21 @@
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)">
     <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
+    <meta name="description" content="Личный учёт расходов: траты по категориям и сводка за день, неделю и месяц.">
     <title>Расходы</title>
+
     <link rel="stylesheet" href="/app.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>💸</text></svg>">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/icons/icon-32.png" sizes="32x32">
+    <link rel="icon" href="/icons/icon-192.png" sizes="192x192">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
+    <!-- iOS не читает manifest.json: запуск с домашнего экрана без адресной
+         строки включается только этими мета-тегами. -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Расходы">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
 </head>
 <body class="h-full">
     <div id="app" class="min-h-full"></div>

@@ -1,7 +1,6 @@
-import { api, setToken } from '../api.js';
 import { errorMessage } from '../messages.js';
 import { navigate } from '../router.js';
-import { setState } from '../store.js';
+import { signIn } from '../session.js';
 
 export function renderLogin(root) {
     root.innerHTML = `
@@ -26,7 +25,7 @@ export function renderLogin(root) {
                                required autocomplete="current-password">
                     </div>
 
-                    <p id="login-error"
+                    <p id="login-error" role="alert"
                        class="hidden rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/60 dark:text-red-300"></p>
 
                     <button class="btn-primary w-full" type="submit" id="login-submit">Войти</button>
@@ -55,9 +54,7 @@ export function renderLogin(root) {
         submit.textContent = 'Входим…';
 
         try {
-            const result = await api.login(login, password);
-            setToken(result.token);
-            setState({ user: result.user });
+            await signIn(login, password);
             navigate('/expenses');
         } catch (error) {
             showError(errorBox, errorMessage(error));
